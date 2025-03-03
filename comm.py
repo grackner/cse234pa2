@@ -87,11 +87,11 @@ class Communicator(object):
                 recv_data = self.comm.recv(source=i)
                 # Apply reduction
                 if op == MPI.SUM:
-                    dest_array += recv_data
+                    dest_array[:] = np.add(dest_array, recv_data)
                 elif op == MPI.MAX:
-                    dest_array = np.maximum(dest_array, recv_data)
+                    dest_array[:] = np.maximum(dest_array, recv_data)
                 elif op == MPI.MIN:
-                    dest_array = np.minimum(dest_array, recv_data)
+                    dest_array[:] = np.minimum(dest_array, recv_data)
 
         self.comm.Bcast(dest_array, root=0)
         return dest_array
