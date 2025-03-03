@@ -73,28 +73,23 @@ class Communicator(object):
           - For non-root processes: one send and one receive.
           - For the root process: (n-1) receives and (n-1) sends.
         """
-        nprocs = self.comm.Get_size() # 8 cores
-        rank = self.comm.Get_rank() # Get rank
-
-        if rank != 0:
-            self.comm.send(src_array, dest=0)
-            # print(f"RANK: {rank}, SENT_DATA: {src_array}")
+        #TODO: Your code here
+        rank = self.comm.Get_rank()
+        size = self.comm.Get_size()
+        if rank == 0:
+            reduced_data = np.zeros_like(src_array)
+            self.comm.Reduce(src_array, reduced_data, op=op, root=0)
+            dest_array[:] = reduced_data[:]
         else:
-            print("ROOT")
-            dest_array[:] = src_array
-            for i in range(1, nprocs):
-                # Receive sent data
-                recv_data = self.comm.recv(source=i)
-                # Apply reduction
-                if op == MPI.SUM:
-                    dest_array[:] = np.add(dest_array, recv_data)
-                elif op == MPI.MAX:
-                    dest_array[:] = np.maximum(dest_array, recv_data)
-                elif op == MPI.MIN:
-                    dest_array[:] = np.minimum(dest_array, recv_data)
-
+            self.comm.Reduce(src_array, None, op=op, root=0)
         self.comm.Bcast(dest_array, root=0)
-        return dest_array
+        src_array_byte = src_array.itemsize * src_array.size
+        if rank == 0:
+            self.total_bytes_transferred += src_array_byte * (size - 1)
+            self.total_bytes_transferred += src_array_byte * (size - 1)
+        else:
+            self.total_bytes_transferred += src_array_byte
+            self.total_bytes_transferred += src_array_byte
 
     def myAlltoall(self, src_array, dest_array):
         """
@@ -111,28 +106,22 @@ class Communicator(object):
             
         The total data transferred is updated for each pairwise exchange.
         """
-        nprocs = self.comm.Get_size() # 8 cores
-
-        # Ensure that the arrays can be evenly partitioned among processes.
-        assert src_array.size % nprocs == 0, (
-            "src_array size must be divisible by the number of processes"
-        )
-        assert dest_array.size % nprocs == 0, (
-            "dest_array size must be divisible by the number of processes"
-        )
-
-        # Calculate the number of bytes in one segment.
-        send_segment_size = src_array.size // nprocs
-
-        for i in range(nprocs):
-            rank = self.comm.Get_rank()
+        #TODO: Your code here
+        rank = self.comm.Get_rank()
+        size = self.comm.Get_size()
+        segment_size = src_array.size // size
+        for i in range(size):
             if i == rank:
-                dest_array[i * send_segment_size: (i + 1) * send_segment_size] = src_array[i * send_segment_size: (i + 1) * send_segment_size]
+                dest_array[i * segment_size : (i + 1) * segment_size] = \
+                src_array[i * segment_size : (i + 1) * segment_size]
             else:
-                send_data = src_array[i * send_segment_size: (i + 1) * send_segment_size]
-                # print(f"RANK: {rank}, i: {i}, SEND DATA: {send_data}")
-                recv_data = dest_array[i * send_segment_size: (i + 1) * send_segment_size]
-                # print(f"RANK: {rank}, i: {i}, RECEIVE DATA: {recv_data}")
-                self.comm.Sendrecv(send_data, dest=i, recvbuf=recv_data, source=i)
-
-        return dest_array
+                send_segment = src_array[i * segment_size : (i + 1) * segment_size]
+                recv_segment = np.empty_like(send_segment)
+                self.comm.Sendrecv(send_segment, dest=i, sendtag=rank,
+                                recvbuf=recv_segment, source=i, recvtag=i)
+                dest_array[i * segment_size : (i + 1) * segment_size] = recv_segment
+        
+        send_seg_bytes = src_array.itemsize * segment_size
+        recv_seg_bytes = dest_array.itemsize * segment_size
+        self.total_bytes_transferred += send_seg_bytes * (size - 1)
+        self.total_bytes_transferred += recv_seg_bytes * (size - 1)
