@@ -86,10 +86,15 @@ def naive_collect_forward_input(
     After gathering, the full input should have shape:
       (batch_size, seq_length, part_in_dim * mp_size)
     """
-    # All gather
-    x = np.ascontiguousarray(x)
-    collected_x = np.zeros((x.shape[0], x.shape[1], x.shape[2]*mp_size))
-    mp_comm.Allgather(x, collected_x)
+    # Get shape dims as variables
+    batch_size, seq_length, part_in_dim = x.shape
+    
+    # Perform all gather
+    nodes_acc = mp_comm.allgather(x)
+    
+    # Concatenate along last dim
+    collected_x = np.concatenate(nodes_acc, axis=2)
+
     return collected_x
 
 
@@ -106,9 +111,15 @@ def naive_collect_forward_output(
     After gathering, the full output should have shape:
       (batch_size, seq_length, part_out_dim * mp_size)
     """
-    out = np.ascontiguousarray(out)
-    collected_out = np.zeros((out.shape[0], out.shape[1], out.shape[2]*mp_size), dtype=out.dtype)
-    mp_comm.Allgather(out, collected_out)
+    # Get shape dims as variables
+    batch_size, seq_length, part_in_dim = out.shape
+    
+    # Perform all gather
+    nodes_acc = mp_comm.allgather(out)
+    
+    # Concatenate along last dim
+    collected_out = np.concatenate(nodes_acc, axis=2)
+
     return collected_out
 
 def naive_collect_backward_output(
