@@ -113,14 +113,6 @@ class Communicator(object):
         """
         nprocs = self.comm.Get_size() # 8 cores
 
-        # Ensure that the arrays can be evenly partitioned among processes.
-        assert src_array.size % nprocs == 0, (
-            "src_array size must be divisible by the number of processes"
-        )
-        assert dest_array.size % nprocs == 0, (
-            "dest_array size must be divisible by the number of processes"
-        )
-
         # Calculate the number of bytes in one segment.
         send_segment_size = src_array.size // nprocs
 
