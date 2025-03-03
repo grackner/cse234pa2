@@ -112,7 +112,7 @@ def naive_collect_forward_output(
       (batch_size, seq_length, part_out_dim * mp_size)
     """
     # Get shape dims as variables
-    batch_size, seq_length, part_in_dim = out.shape
+    batch_size, seq_length, part_out_dim = out.shape
     
     # Perform all gather
     nodes_acc = mp_comm.allgather(out)
@@ -152,7 +152,16 @@ def naive_collect_backward_output(
         The local output gradient for this MP node with shape 
         (batch_size, seq_length, out_dim // mp_size).
     """
-    #TODO: Your code here
+     # Get shape dims as variables
+    batch_size, seq_length, out_dim = output_grad.shape
+    
+    # Get partition dim
+    part_dim = out_dim // mp_size
+
+    # Index output grad, specifying MP node on last dim
+    collected_output_grad = output_grad[:, :, mp_group_idx * part_dim:(mp_group_idx + 1) * part_dim]
+
+    return collected_output_grad
 
 
 def naive_collect_backward_x(
