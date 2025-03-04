@@ -113,11 +113,13 @@ class Communicator(object):
         """
         nprocs = self.comm.Get_size() # 8 cores
 
-        # Calculate the number of bytes in one segment.
+        # Calculate segment size
         send_segment_size = src_array.size // nprocs
 
+        # Loop through processes
         for i in range(nprocs):
             rank = self.comm.Get_rank()
+            # If process = rank, perform direct copy
             if i == rank:
                 dest_array[i * send_segment_size: (i + 1) * send_segment_size] = src_array[i * send_segment_size: (i + 1) * send_segment_size]
             else:
