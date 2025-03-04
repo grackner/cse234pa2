@@ -41,11 +41,14 @@ def split_data(
         - The data length is guaranteed to be divisible by dp_size.
         - Do not shuffle the data indices as shuffling will be done later.
     """
+    # Divide rank by mp size
     rank_model_size = rank // mp_size
 
+    # Split data by DP group
     x_dp = np.array_split(x_train, dp_size)
     y_dp = np.array_split(y_train, dp_size)
 
+    # Split DP group dataset by MP ranks
     split_x_train = x_dp[rank_model_size]
     split_y_train = y_dp[rank_model_size]
 
