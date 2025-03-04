@@ -51,14 +51,14 @@ def get_info(
     """
     # Partition based on layer:
     if fc_layer in ['fc_q', 'fc_k', 'fc_v']:
-        # Partition based on the output dimension
+        # Partition dimension based on the output dimension
         part_out_dim = out_dim // mp_size
-        # Input dimension remains the same
+        # Partitioned input dimension equals input dimension
         part_in_dim = in_dim
     elif fc_layer in ['fc_o']:
-        # Partition based on the input dimension
+        # Partition dimension based on the input dimension
         part_in_dim = in_dim // mp_size
-        # Output dimension remains the same
+        # Partitioned output dimension equals output dimension
         part_out_dim = out_dim 
 
     # Model & Data Parallel Index
@@ -86,7 +86,7 @@ def naive_collect_forward_input(
     After gathering, the full input should have shape:
       (batch_size, seq_length, part_in_dim * mp_size)
     """
-    # Get shape dims as variables
+    # Separate shape dimensions
     batch_size, seq_length, part_in_dim = x.shape
     
     # Perform all gather
@@ -111,7 +111,7 @@ def naive_collect_forward_output(
     After gathering, the full output should have shape:
       (batch_size, seq_length, part_out_dim * mp_size)
     """
-    # Get shape dims as variables
+    # Separate shape dimensions
     batch_size, seq_length, part_out_dim = out.shape
     
     # Perform all gather
@@ -152,10 +152,10 @@ def naive_collect_backward_output(
         The local output gradient for this MP node with shape 
         (batch_size, seq_length, out_dim // mp_size).
     """
-    # Get shape dims as variables
+    # Separate shape dimensions
     batch_size, seq_length, out_dim = output_grad.shape
     
-    # Get partition dim
+    # Get partition dim according to spec
     part_dim = out_dim // mp_size
 
     # Index output grad, specifying MP node on last dim
@@ -196,7 +196,7 @@ def naive_collect_backward_x(
         The reduced and scattered grad_x with shape 
         (batch_size, seq_length, in_dim // mp_size).
     """
-    # Get shape dims as variables
+    # Separate shape dimensions
     batch_size, seq_length, in_dim = grad_x.shape
     
     # Get partition dim
@@ -211,7 +211,7 @@ def naive_collect_backward_x(
     # Create empty result array with size = total elements received
     recv_data = np.empty(batch_size * seq_length * part_dim, dtype=grad_x.dtype) 
     
-    # Perform reduce gather with send and receive buffers
+    # Perform reduce scatter
     mp_comm.Reduce_scatter(send_data, recv_data, None, op=MPI.SUM)
     
     # Reshape result to expected output spec dimensions 
