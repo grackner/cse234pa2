@@ -1,6 +1,6 @@
 import numpy as np
 from mpi4py import MPI
-
+import time
 
 def get_info(
     comm,
@@ -152,7 +152,7 @@ def naive_collect_backward_output(
         The local output gradient for this MP node with shape 
         (batch_size, seq_length, out_dim // mp_size).
     """
-     # Get shape dims as variables
+    # Get shape dims as variables
     batch_size, seq_length, out_dim = output_grad.shape
     
     # Get partition dim
@@ -196,4 +196,25 @@ def naive_collect_backward_x(
         The reduced and scattered grad_x with shape 
         (batch_size, seq_length, in_dim // mp_size).
     """
-    #TODO: Your code here
+    # Get shape dims as variables
+    batch_size, seq_length, in_dim = grad_x.shape
+    
+    # Get partition dim
+    part_dim = in_dim // mp_size
+
+    # Reshape grad x to match operation inputs
+    grad_x = grad_x.reshape(batch_size, seq_length, mp_size, part_dim)
+    grad_x = grad_x.transpose(2, 0, 1, 3)
+
+    # Reshape grad x to fit send data buffer dims
+    send_data = grad_x.reshape(mp_size, batch_size * seq_length * part_dim)
+    # Create empty result array with size = total elements received
+    recv_data = np.empty(batch_size * seq_length * part_dim, dtype=grad_x.dtype) 
+    
+    # Perform reduce gather with send and receive buffers
+    mp_comm.Reduce_scatter(send_data, recv_data, None, op=MPI.SUM)
+    
+    # Reshape result to expected output spec dimensions 
+    collected_grad_x = recv_data.reshape(batch_size, seq_length, part_dim)
+
+    return collected_grad_x
