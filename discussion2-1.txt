@@ -1,1 +1,13 @@
-Put discussion here for 2.1
+Gabrielle Rackner, Krishna Priyanka Ponnaganti
+
+2.1:
+On our most recent run, our AllReduce had a speed of 0.000657 seconds and MPI's implementation had a speed
+of 0.000908 seconds. This means our AllReduce implementation is 138% faster than MPI's implemenation. 
+We believe we were able to get higher performance than MPI's AllReduce because our implementation 
+efficiently handles root and non-root processes. The non-root processes only send information to root
+and our root process handles all of the reduction. Since there are so few processes in our testing our implementation, our AllReduce is very efficient but
+there may be a root bottleneck if we applied more processes. The gap between our AlltoAll and MPI's AlltoAll
+is smaller. Our most recent run had a speed of 0.000046 seconds for MPI's AlltoAll and 0.000043  for our
+implementation of AlltoAll. This is only a 105% difference. Our implementation is comparable to MPI's 
+likely because we utilize Sendrecv to only send necessary information and receive necessary information
+from multiple processes at once. 
